@@ -1,6 +1,6 @@
 #! /bin/sh
 ### BEGIN INIT INFO
-# Provides:          raspi2fb
+# Provides:          snag
 # Required-Start:    $remote_fs $syslog
 # Required-Stop:     $remote_fs $syslog
 # Default-Start:     2 3 4 5
@@ -16,8 +16,8 @@
 
 # PATH should only include /usr/* if it runs after the mountnfs.sh script
 PATH=/sbin:/usr/sbin:/bin:/usr/bin
-DESC="Copy Raspberry Pi screen to a secondary framebuffer"
-NAME=raspi2fb
+DESC="Copy primary display to a secondary framebuffer for display on a Sharp Memory LCD"
+NAME=snag
 DAEMON=/usr/local/bin/$NAME
 PIDFILE=/var/run/$NAME.pid
 DAEMON_ARGS="--daemon --pidfile $PIDFILE"
