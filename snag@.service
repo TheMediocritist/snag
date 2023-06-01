@@ -1,0 +1,12 @@
+[Unit]
+Description=Copy primary display to a secondary framebuffer for display on a Sharp Memory LCD
+
+[Service]
+Type=forking
+PIDFile=/var/run/snag%i.pid
+ExecStart=/usr/local/bin/snag --daemon --device /dev/fb%i --pidfile /var/run/snag%i.pid
+Restart=on-failure
+RestartSec=5
+
+[Install]
+WantedBy=multi-user.target
