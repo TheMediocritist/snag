@@ -1,16 +1,15 @@
-# raspi2fb
-Program to copy the Raspberry Pi display to a secondary framebuffer.
+# snag
+Copy primary display to a secondary framebuffer for display on a Sharp Memory LCD
+
 # usage
 
-    raspi2fb <options>
+    snag <options>
 
     --daemon - start in the background as a daemon
     --device <device> - framebuffer device (default /dev/fb1)
     --display <number> - Raspberry Pi display number (default 0)
     --fps <fps> - set desired frames per second (default 10 frames per second)
-    --copyrect - copy only a rectangle the same size as the dest framebuffer
-    --rectx <x> - copy rectangle from source fb at <x> in copyrect mode (default 0)
-    --recty <y> - copy rectangle from source fb at <y> in copyrect mode (default 0)
+    --dithertype <type> - one of bayer2x2/bayer4x4/bayer8x8/bayer18x16 (default bayer4x4)
     --pidfile <pidfile> - create and lock PID file (if being run as a daemon)
     --once - copy only one time, then exit
     --help - print usage and exit
@@ -29,6 +28,7 @@ You will need to install libbsd-dev
     cd build
     cmake ..
     make
+
 # install
 ## Raspian Wheezy
     sudo make install
