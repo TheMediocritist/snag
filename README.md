@@ -1,5 +1,9 @@
 # snag
-Copy primary display to a secondary framebuffer for display on a Sharp Memory LCD
+Copy primary display to a secondary framebuffer for display on a Sharp Memory LCD. Intended for use with [Beeperberry](https://beepberry.sqfmi.com) to enable fast copying of HDMI data to its display.
+
+Forked from https://github.com/AndrewFromMelbourne/raspi2fb with the following changes:
+* copies 16-bit HDMI buffer to 8-bit Sharp display buffer
+* displays coloured buffer data using Bayer dithering to maintain integrity/accuracy of any black & white data
 
 # usage
 
