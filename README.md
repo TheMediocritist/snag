@@ -32,6 +32,10 @@ You will need to install libbsd-dev
     cd build
     cmake ..
     make
+# test
+    ./snag
+
+ctrl+c to quit
 
 # install
     sudo make install
