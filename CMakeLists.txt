@@ -15,7 +15,7 @@ include_directories(${BCM_HOST_INCLUDE_DIRS} ${LIBBSD_INCLUDE_DIRS})
 
 link_directories(${BCM_HOST_LIBRARY_DIRS} ${LIBBSD_LIBRARY_DIRS})
 
-add_executable(${PROJECT_NAME} raspi2fb.c syslogUtilities.c)
+add_executable(${PROJECT_NAME} snag.c syslogUtilities.c)
 
 target_link_libraries(${PROJECT_NAME} ${BCM_HOST_LIBRARIES} ${LIBBSD_LIBRARIES})
 
