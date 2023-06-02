@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 2.6)
-project(raspi2fb)
+project(snag)
 
 set(CMAKE_BUILD_TYPE Release)
 set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -Wall")
