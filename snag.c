@@ -60,7 +60,7 @@
 
 #define DEFAULT_DEVICE "/dev/fb1"
 #define DEFAULT_DISPLAY_NUMBER 0
-#define DEFAULT_FPS 30
+#define DEFAULT_FPS 15
 #define DEFAULT_DITHER_METHOD "4x4"
 #define DEBUG_INT(x) printf( #x " at line %d; result: %d\n", __LINE__, x)
 #define DEBUG_C(x) printf( #x " at line %d; result: %c\n", __LINE__, x)
@@ -82,7 +82,7 @@ void printUsage( FILE *fp, const char *name)
 	fprintf(fp, "  --device <device>     Framebuffer device (default %s)\n", DEFAULT_DEVICE);
 	fprintf(fp, "  --display <number>    Raspberry Pi display number (default %d)\n", DEFAULT_DISPLAY_NUMBER);
 	fprintf(fp, "  --fps <fps>           Set desired frames per second (default %d)\n", DEFAULT_FPS);
-	fprintf(fp, "  --dithertype <type>   Set dither method (2x2/4x4/8x8/16x16) (default %s)\n", DEFAULT_DITHER_METHOD);
+	fprintf(fp, "  --dither <type>   Set dither method (none/2x2/4x4/8x8/16x16) (default %s)\n", DEFAULT_DITHER_METHOD);
 	fprintf(fp, "  --pidfile <pidfile>   Create and lock PID file (if being run as a daemon)\n");
 	fprintf(fp, "  --once                Copy only one time, then exit\n");
 	fprintf(fp, "  --help                Print usage and exit\n");
@@ -128,7 +128,7 @@ int main(int argc, char *argv[])
 		{ "fps", required_argument, NULL, 'f' },
 		{ "help", no_argument, NULL, 'h' },
 		{ "display", required_argument, NULL, 'n' },
-		{ "dithertype", required_argument, NULL, 'b'},
+		{ "dither", required_argument, NULL, 'b'},
 		{ "pidfile", required_argument, NULL, 'p' },
 		{ "device", required_argument, NULL, 'D' },
 		{ "once", no_argument, NULL, 'o' },
@@ -280,8 +280,7 @@ int main(int argc, char *argv[])
 
 	bcm_host_init();
 
-	DISPMANX_DISPLAY_HANDLE_T display
-		= vc_dispmanx_display_open(displayNumber);
+	DISPMANX_DISPLAY_HANDLE_T display = vc_dispmanx_display_open(displayNumber);
 
 	if (display == 0)
 	{
@@ -301,7 +300,7 @@ int main(int argc, char *argv[])
 	}
 
 	//---------------------------------------------------------------------
-
+	// open the /dev/fb1 framebuffer for reading and writing
 	int fb1 = open(device, O_RDWR);
 	if (fb1 == -1)
 	{
@@ -329,8 +328,10 @@ int main(int argc, char *argv[])
 
 	//---------------------------------------------------------------------
 
+	// map fb1 framebuffer data into memory as a series of byte-sized chunks (each chunck contains 8 consecutive pixels)
+	int chunks = finfo.smem_len/8;
 	uint8_t *fb1_data = mmap(0,
-		 finfo.smem_len,
+		 chunks, 
 		 PROT_READ | PROT_WRITE,
 		 MAP_SHARED,
 		 fb1,
@@ -341,8 +342,9 @@ int main(int argc, char *argv[])
 		perrorLog(isDaemon, program, "cannot map framebuffer into memory");
 		exitAndRemovePidFile(EXIT_FAILURE, pfh);
 	}
-
-	memset(fb1_data, 0, finfo.smem_len);
+	
+	// set each chunk to zero to clear the screen
+	memset(fb1_data, 0, chunks);
 
 	//---------------------------------------------------------------------
 
@@ -362,18 +364,18 @@ int main(int argc, char *argv[])
 	// create offscreen buffers for old & new data storage
 	uint32_t len = finfo.smem_len;
 
-	uint8_t *old_data = malloc(len);
+	//uint8_t *old_data = malloc(len);
 	uint16_t *new_data = malloc(len);
 
 	uint32_t line_len = finfo.line_length;
 
-	if ((old_data == NULL) || (new_data == NULL))
-	{
-		perrorLog(isDaemon, program, "cannot allocate offscreen buffers");
-		exitAndRemovePidFile(EXIT_FAILURE, pfh);
-	}
+	//if ((old_data == NULL) || (new_data == NULL))
+	//{
+	//	perrorLog(isDaemon, program, "cannot allocate offscreen buffers");
+	//	exitAndRemovePidFile(EXIT_FAILURE, pfh);
+	//}
 
-	memset(old_data, 0, finfo.line_length * vinfo.yres);
+	//memset(old_data, 0, finfo.line_length * vinfo.yres);
 
 	//---------------------------------------------------------------------
 
@@ -409,95 +411,138 @@ int main(int argc, char *argv[])
 	{
 		gettimeofday(&start_time, NULL);
 		
-		//-----------------------------------------------------------------
-		
+		// read HDMI framebuffer
 		vc_dispmanx_snapshot(display, resourceHandle, 0);
 		vc_dispmanx_resource_read_data(resourceHandle,
 			&rect,
 			new_data,
-			line_len*2);  // because source is 16 bit <- but what if this isn't the case?
+			line_len*2);  // because source is 16 bit 
 			
-		// load pixel data 
-		uint8_t *fb1_pixel = fb1_data;
+		// load pixel data: 
+		//    - fb1_chunk is the first 8 pixels in the framebuffer
+		//    - new_pixel is the HDMI pixel rgb value 
+		uint8_t *fb1_chunk = fb1_data;
 		uint16_t *new_pixel = new_data;
-		uint8_t *old_pixel = old_data;
 		
-		// just for debug - check min and max grayscale values per frame
+		// just for debug - check min and max grayscale values per frame, and the number of changed pixels
 		int mingray = 128;
 		int maxgray = 128;
+		int changedpx = 0;
 		
-		uint32_t pixel;
-		for (pixel = 0 ; pixel < pixels ; pixel++)
-		{   
-			uint8_t red = ((*new_pixel >> 8) & 0xF8);
-			uint8_t green = ((*new_pixel >> 3) & 0xFC);
-			uint8_t blue = ((*new_pixel << 3) & 0xF8);
-			//int grayscale = (int)(red * 0.299 + green * 0.587 + blue * 0.114);
-			int grayscale = (int)((red + green + blue)/3);
-			grayscale = grayscale > 255 ? 255 : grayscale; // Ensure grayscale value is within the range [0, 255]
-			
-			// just for debug
-			mingray = grayscale < mingray ? grayscale : mingray;
-			maxgray = grayscale > maxgray ? grayscale : maxgray;
-			
-			// this is what we write to the framebuffer as either 0 or 255
-			uint8_t onebit = 0;
-			
-			// get row & column values for current pixel
-			uint8_t column = pixel % 400;
-			uint8_t row = pixel / 400;
-			
-			// apply the selected dither
-			if (strcmp(dithermethod, "2x2") == 0)
-			{
-				int colMod = column % 2;
-				int rowMod = row % 2;
-				onebit = ((grayscale * 5 / 255) > BAYER2X2[rowMod][colMod]) ? 255 : onebit;
+		uint16_t chunk;
+		uint8_t chunk_pixel;
+		uint32_t pixel = 0;
+		
+		for (chunk = 0; chunk < 12000; chunk++) // 8 bits per chunk = 96000 pixels
+		{	
+			for (chunk_pixel = 0 ; chunk_pixel < 8 ; chunk_pixel++)
+			{   
+				// temp buffer to store new byte data
+				char bufferByte = 0;
+				
+				// extract new rgb data for current pixel
+				uint8_t red = ((*new_pixel >> 8) & 0xF8);
+				uint8_t green = ((*new_pixel >> 3) & 0xFC);
+				uint8_t blue = ((*new_pixel << 3) & 0xF8);
+				
+				// convert to grayscale
+				//int grayscale = (int)(red * 0.299 + green * 0.587 + blue * 0.114);
+				int grayscale = (int)((red + green + blue)/3);
+				grayscale = grayscale > 255 ? 255 : grayscale; // Ensure grayscale value is within the range [0, 255]
+				
+				// just for debug
+				mingray = grayscale < mingray ? grayscale : mingray;
+				maxgray = grayscale > maxgray ? grayscale : maxgray;
+				
+				// get row & column values for current pixel
+				uint8_t column = pixel % 400;
+				uint8_t row = pixel / 400;
+				
+				// apply the selected dither
+				if (strcmp(dithermethod, "2x2") == 0)
+				{
+					int colMod = column % 2;
+					int rowMod = row % 2;
+					if ((grayscale*1.3 / 64) > BAYER2X2[rowMod][colMod])
+					{
+						bufferByte |=  (1 << (7 - chunk_pixel)); 
+					}
+					else
+					{
+						bufferByte &=  ~(1 << (7 - chunk_pixel));
+					}
+				}
+				else if (strcmp(dithermethod, "4x4") == 0)
+				{
+					int colMod = column % 4;
+					int rowMod = row % 4;
+					if ((grayscale*1.1 / 16) > BAYER4X4[rowMod][colMod])
+					{
+						bufferByte |=  (1 << (7 - chunk_pixel)); 
+					}
+					else
+					{
+						bufferByte &=  ~(1 << (7 - chunk_pixel));
+					}
+				}
+				else if (strcmp(dithermethod, "8x8") == 0)
+				{
+					int colMod = column % 8;
+					int rowMod = row % 8;
+					if ((grayscale*1.09 / 4) > BAYER8X8[rowMod][colMod])
+					{
+						bufferByte |=  (1 << (7 - chunk_pixel)); 
+					}
+					else
+					{
+						bufferByte &=  ~(1 << (7 - chunk_pixel));
+					}
+				}
+				else if (strcmp(dithermethod, "16x16") == 0)
+				{
+					int colMod = column % 16;
+					int rowMod = row % 16;
+					if (grayscale*1.06 > BAYER16X16[rowMod][colMod]) //1.06 is manually tuned...
+					{
+						bufferByte |=  (1 << (7 - chunk_pixel)); 
+					}
+					else
+					{
+						bufferByte &=  ~(1 << (7 - chunk_pixel));
+					}
+				}
+				else // dither = 'none' or any other random string
+				{
+					if (grayscale > 140)
+					{
+						bufferByte |=  (1 << (7 - chunk_pixel)); 
+					}
+					else
+					{
+						bufferByte &=  ~(1 << (7 - chunk_pixel));
+					}
+				}
+				
+				// update framebuffer if bufferByte has changed
+				if (fb1_data[pixel] != bufferByte)
+				{
+					fb1_data[pixel] = bufferByte;
+					changedpx += 8;
+				}
+				
+				// Move to the next new pixel
+				++new_pixel;
+				++pixel;
 			}
-			else if (strcmp(dithermethod, "4x4") == 0)
-			{
-				int colMod = column % 4;
-				int rowMod = row % 4;
-				onebit = ((grayscale * 17 / 255) > BAYER4X4[rowMod][colMod]) ? 255 : onebit;
-			}
-			else if (strcmp(dithermethod, "8x8") == 0)
-			{
-				int colMod = column % 8;
-				int rowMod = row % 8;
-				onebit = ((grayscale * 65 / 255) > BAYER8X8[rowMod][colMod]) ? 255 : onebit;
-			}
-			else if (strcmp(dithermethod, "16x16") == 0)
-			{
-				int colMod = column % 16;
-				int rowMod = row % 16;
-				onebit = ((grayscale * 257 / 255) > BAYER16X16[rowMod][colMod]) ? 255 : onebit;
-			}
-			else
-			{
-				onebit = grayscale > 120 ? 255 : onebit;
-			}
-			
-			// update framebuffer if pixel has changed
-			if (onebit != *old_pixel)
-			{
-				*fb1_pixel = onebit;
-			}
-			
-			// Move to the next pixel
-			++fb1_pixel;
-			++new_pixel;
-			++old_pixel;
+			// move to the next chunk of framebuffer data
+			++fb1_chunk;
 		}
 		
 		// DEBUG_INT(mingray);
 		// DEBUG_INT(maxgray);
 		
-		uint8_t *tmp = (uint8_t*)old_data;
-		old_data = (uint8_t*)new_data;
-		new_data = (uint16_t*)tmp;
-
 		//-----------------------------------------------------------------
-
+		
 		if (once)
 		{
 			messageLog(isDaemon,
@@ -522,7 +567,6 @@ int main(int argc, char *argv[])
 	//---------------------------------------------------------------------
 
 	free(new_data);
-	free(old_data);
 
 	memset(fb1_data, 0, finfo.smem_len);
 	munmap(fb1_data, finfo.smem_len);
