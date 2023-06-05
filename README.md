@@ -3,7 +3,7 @@ Copy primary display to a secondary framebuffer for display on a Sharp Memory LC
 
 Forked from https://github.com/AndrewFromMelbourne/raspi2fb with the following changes:
 * copies 16-bit HDMI buffer to 1-bit Sharp Memory Display buffer
-* displays coloured buffer to grayscale then 1-bit using Bayer dithering to maintain spatial integrity/accuracy of any black & white data
+* converts coloured buffer to grayscale then 1-bit using Bayer dithering to maintain spatial integrity/accuracy of any black & white data
 
 ## Dithering examples
 ![DitherPatterns](https://github.com/TheMediocritist/snag/assets/79881777/9cbcde9c-946f-45ee-acaa-2af6b710ca7c)
