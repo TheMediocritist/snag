@@ -59,7 +59,7 @@
 
 #define DEFAULT_DEVICE "/dev/fb1"
 #define DEFAULT_DISPLAY_NUMBER 0
-#define DEFAULT_FPS 50
+#define DEFAULT_FPS 30
 #define DEFAULT_DITHER_METHOD "2x2"
 
 #define DEBUG_INT(x) printf( #x " at line %d; result: %d\n", __LINE__, x)
@@ -67,6 +67,64 @@
 #define DEBUG_STR(x) printf( #x " at line %d; result: %c\n", __LINE__, x)
 
 //-------------------------------------------------------------------------
+
+
+// define bayer dither patterns
+const int BAYER2X2[2][2] =	
+{	//	2x2 Bayer Dithering Matrix. Color levels: 5
+	{  51, 206 },
+	{ 153, 102 }
+};
+
+const int BAYER3X3[3][3] =	
+{	//	3x3 Bayer Dithering Matrix. Color levels: 10
+	//{ 181, 231, 131 },
+	//{  50,  25, 100 },
+	//{ 156,  75, 206 }
+	{  75, 150, 225 },
+	{  50, 125, 200 },
+	{  25, 100, 175 }
+};
+
+const int BAYER4X4[4][4] =	
+{	//	4x4 Bayer Dithering Matrix. Color levels: 17
+	{  15, 195,  60, 240 },
+	{ 135,  75, 180, 120 },
+	{  45, 225,  30, 210 },
+	{ 165, 105, 150,  90 }
+};
+
+const int BAYER8X8[8][8] =	
+{	//	8x8 Bayer Dithering Matrix. Color levels: 65
+	{   0, 128,  32, 160,   8, 136,  40, 168 },
+	{ 192,  64, 224,  96, 200,  72, 232, 104 },
+	{  48, 176,  16, 144,  56, 184,  24, 152 },
+	{ 240, 112, 208,  80, 248, 120, 216,  88 },
+	{  12, 140,  44, 172,   4, 132,  36, 164 },
+	{ 204,  76, 236, 108, 196,  68, 228, 100 },
+	{  60, 188,  28, 156,  52, 180,  20, 148 },
+	{ 252, 124, 220,  92, 244, 116, 212,  84 }
+};
+
+const int BAYER16X16[16][16] =	
+{	//	16x16 Bayer Dithering Matrix.  Color levels: 256
+	{   0, 191,  48, 239,  12, 203,  60, 251,   3, 194,  51, 242,  15, 206,  63, 254 }, 
+	{ 127,  64, 175, 112, 139,  76, 187, 124, 130,  67, 178, 115, 142,  79, 190, 127 },
+	{  32, 223,  16, 207,  44, 235,  28, 219,  35, 226,  19, 210,  47, 238,  31, 222 },
+	{ 159,  96, 143,  80, 171, 108, 155,  92, 162,  99, 146,  83, 174, 111, 158,  95 },
+	{   8, 199,  56, 247,   4, 195,  52, 243,  11, 202,  59, 250,   7, 198,  55, 246 },
+	{ 135,  72, 183, 120, 131,  68, 179, 116, 138,  75, 186, 123, 134,  71, 182, 119 },
+	{  40, 231,  24, 215,  36, 227,  20, 211,  43, 234,  27, 218,  39, 230,  23, 214 },
+	{ 167, 104, 151,  88, 163, 100, 147,  84, 170, 107, 154,  91, 166, 103, 150,  87 },
+	{   2, 193,  50, 241,  14, 205,  62, 253,   1, 192,  49, 240,  13, 204,  61, 252 },
+	{ 129,  66, 177, 114, 141,  78, 189, 126, 128,  65, 176, 113, 140,  77, 188, 125 },
+	{  34, 225,  18, 209,  46, 237,  30, 221,  33, 224,  17, 208,  45, 236,  29, 220 },
+	{ 161,  98, 145,  82, 173, 110, 157,  94, 160,  97, 144,  81, 172, 109, 156,  93 },
+	{  10, 201,  58, 249,   6, 197,  54, 245,   9, 200,  57, 248,   5, 196,  53, 244 },
+	{ 137,  74, 185, 122, 133,  70, 181, 118, 136,  73, 184, 121, 132,  69, 180, 117 },
+	{  42, 233,  26, 217,  38, 229,  22, 213,  41, 232,  25, 216,  37, 228,  21, 212 },
+	{ 169, 106, 153,  90, 165, 102, 149,  86, 168, 105, 152,  89, 164, 101, 148,  85 }
+};
 
 volatile bool run = true;
 
@@ -284,14 +342,6 @@ int main(int argc, char *argv[])
 
 	//---------------------------------------------------------------------
 
-	if ((vinfo.xres * 2) != finfo.line_length)
-	{
-		perrorLog(isDaemon,
-				  program,
-				  "assumption failed ... framebuffer lines are padded");
-		//exitAndRemovePidFile(EXIT_FAILURE, pfh);
-	}
-
 	if ((vinfo.xres % 16) != 0)
 	{
 		perrorLog(isDaemon,
@@ -354,7 +404,7 @@ int main(int argc, char *argv[])
 	messageLog(isDaemon,
 			   program,
 			   LOG_INFO,
-			   "raspi2fb normal scaling mode, copying from source fb[%dx%d] to dest fb [%dx%d]",
+			   "snag normal scaling mode, copying from source fb[%dx%d] to dest fb [%dx%d]",
 			   info.width,
 			   info.height,
 			   vinfo.xres,
@@ -379,7 +429,7 @@ int main(int argc, char *argv[])
 		vc_dispmanx_resource_read_data(resourceHandle,
 									   &rect,
 									   new_data,
-									   line_len*2);  // because source is 16 bit 
+									   line_len * 2);  // * 2 because source is 16 bit 
 		
 		// get the first 8 pixels of fb1 and the first pixel of new_data & old_data
 		uint8_t *fb1_pixels = fb1_data;
@@ -416,13 +466,30 @@ int main(int argc, char *argv[])
 					uint8_t newbit = 1;
 					uint8_t oldbit = buffer_chunk[fb_chunk_bit];
 					
-					if (grayscale < 140)
-					{
-						newbit = 0;
+					// pixel location
+					uint8_t col = pixel % 400;
+					uint8_t row = pixel / 400;
+					
+					if (strcmp(dithermethod, "2x2") == 0){
+						newbit = (grayscale < BAYER2X2[row % 2][col % 2] ? 0 : 1);
+					}
+					else if (strcmp(dithermethod, "3x3") == 0){
+						newbit = (grayscale < BAYER3X3[row % 3][col % 3] ? 0 : 1);
+					}
+					else if (strcmp(dithermethod, "4x4") == 0){
+						newbit = (grayscale < BAYER4X4[row % 4][col % 4] ? 0 : 1);
+					}
+					else if (strcmp(dithermethod, "8x8") == 0){
+						newbit = (grayscale < BAYER8X8[row % 8][col % 8] ? 0 : 1);
+					}
+					else if (strcmp(dithermethod, "16x16") == 0){
+						newbit = (grayscale < BAYER16X16[row % 16][col % 16] ? 0 : 1);
+					}
+					else{
+						newbit = (grayscale < 140 ? 0 : 1);
 					}
 					
-					if (newbit != oldbit)
-					{
+					if (newbit != oldbit){
 						memcpy(fb1_data + pixel, &newbit, 1);
 					}
 				}
