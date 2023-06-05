@@ -27,8 +27,13 @@ Forked from https://github.com/AndrewFromMelbourne/raspi2fb with the following c
     sudo apt-get install cmake
     sudo apt-get install libbsd-dev
     ```
-2. Build the executable
+2. Download this repo
     ```
+    git clone https://github.com/TheMediocritist/snag
+    ```
+4. Build the executable
+    ```
+    cd snag
     mkdir build
     cd build
     cmake ..
