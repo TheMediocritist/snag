@@ -54,19 +54,19 @@ Forked from https://github.com/AndrewFromMelbourne/raspi2fb with the following c
     ```
 5. (optional) Run as a system service
     ```
-    sudo cp ../raspi2fb@.service /etc/systemd/system/
-    sudo systemctl daemon-reload
-    sudo systemctl enable raspi2fb@1.service
-    sudo systemctl start raspi2fb@1
+    sudo make install
+    sudo cp ../snag.init.d /etc/init.d/snag
+    sudo update-rc.d snag defaults
+    sudo service snag start
     ```
 ### How to uninstall
 
 1. Stop and remove the system service (if setup)
-    ```sudo systemctl stop raspi2fb@1
-    sudo systemctl disable raspi2fb@1.service
-    sudo rm /etc/systemd/system/raspi2fb@.service
+    ```sudo service snag stop
+    sudo update-rc.d -f snag remove
     ```
 2. Delete the executable file
     ```
-    sudo rm /usr/local/bin/raspi2fb
+    sudo rm /usr/local/bin/snag
+    sudo rm /etc/init.d/snag
     ```
