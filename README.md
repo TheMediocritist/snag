@@ -52,7 +52,7 @@ Forked from https://github.com/AndrewFromMelbourne/raspi2fb with the following c
     ```
     sudo make install
     ```
-5. (optional) Run as a system service
+5. (optional) Run as a system service - this will persist after reboot unless the uninstall procedure is followed.
     ```
     sudo make install
     sudo cp ../snag.init.d /etc/init.d/snag
