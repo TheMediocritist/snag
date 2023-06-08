@@ -60,7 +60,7 @@
 #define DEFAULT_DEVICE "/dev/fb1"
 #define DEFAULT_DISPLAY_NUMBER 0
 #define DEFAULT_FPS 30
-#define DEFAULT_DITHER_METHOD "2x2"
+#define DEFAULT_DITHER_METHOD "4x4"
 
 #define DEBUG_INT(x) printf( #x " at line %d; result: %d\n", __LINE__, x)
 #define DEBUG_C(x) printf( #x " at line %d; result: %c\n", __LINE__, x)
@@ -157,6 +157,22 @@ static void signalHandler(int signalNumber)
 		run = false;
 		break;
 	};
+}
+
+
+void convertPixel(uint16_t pxl, uint16_t *red, uint16_t *green, uint16_t *blue) {
+	// Extract red, green, and blue components
+	*red = (pxl >> 11) & 0x1F;
+	*green = (pxl >> 5) & 0x3F;
+	*blue = pxl & 0x1F;
+
+	// Convert 5-bit and 6-bit values to 8-bit values
+	*red = (*red << 3) | (*red >> 2);
+	*green = (*green << 2) | (*green >> 4);
+	*blue = (*blue << 3) | (*blue >> 2);
+	
+	//red = red * 8;
+	//green = red * 4;
 }
 
 //-------------------------------------------------------------------------
@@ -453,14 +469,30 @@ int main(int argc, char *argv[])
 				if (*new_pixel != *old_pixel)
 				{	
 					// extract new rgb data for current pixel and convert to grayscale
-					uint8_t red = ((*new_pixel >> 8) & 0xF8);
-					uint8_t green = ((*new_pixel >> 3) & 0xFC);
-					uint8_t blue = ((*new_pixel << 3) & 0xF8);					
-					//int grayscale = (int)(red * 0.299 + green * 0.587 + blue * 0.114);
-					uint8_t grayscale = (int)((red + green + blue)/3);
+					uint16_t red, green, blue;
+					convertPixel(*new_pixel, &red, &green, &blue);
+					
+					//uint8_t red = ((*new_pixel >> 8) & 0xF8);
+					//uint8_t green = ((*new_pixel >> 3) & 0xFC);
+					//uint8_t blue = ((*new_pixel << 3) & 0xF8);					
+					uint16_t grayscale = (0.299 * red + 0.587 * green + 0.114 * blue);
+					//uint8_t grayscale = (int)((red + green + blue)/3);
+					
+					grayscale *= 1.5; // because there's a bug somewhere
 					
 					// Ensure grayscale value is within the range [0, 255]
 					grayscale = grayscale > 255 ? 255 : grayscale; 
+					
+					// DEBUG
+					if (pixel < 8)
+					{
+						DEBUG_INT(*new_pixel);
+						DEBUG_INT(red);
+						DEBUG_INT(green);
+						DEBUG_INT(blue);
+						DEBUG_INT(grayscale);
+					}
+					
 					
 					// bits to compare
 					uint8_t newbit = 1;
