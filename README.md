@@ -23,7 +23,7 @@ Forked from https://github.com/AndrewFromMelbourne/raspi2fb with the following c
 
 ### Notes
 1. By default, Beepberry is set up to display the linux console on the Sharp framebuffer. If you see flickering text or a cursor, that's because **snag** and **fbcon** are both writing to the same framebuffer. You can fix this by removing `fbcon=map:10` from /boot/cmdline.txt (you may need to use `ssh` to re-enable it).
-2. Although I've tried my best to make **snag** efficient, it still has to churn through 96,000 pixels per update and this comes with a cost. At the default target of 30fps it will consume somewhere between 15 to 20% of the processing power of a Raspberry Pi Zero. If this doesn't work for you, you could: reduce the target FPS; try a Pi Zero 2 or Radxa Zero; or improve the code and submit a PR.
+2. Although I've tried my best to make **snag** efficient, it still has to churn through 96,000 pixels per update and this comes with a cost. At the default target of 30fps it will consume somewhere between 10% to 20% of the processing power of a Raspberry Pi Zero depending on what's drawing to the screen. If this doesn't work for you, you could: reduce the target FPS; try a Pi Zero 2 or Radxa Zero; or improve the code and submit a PR.
 3. Coloured terminal fonts can be difficult to read. Try this:
 
     ```setterm --inversescreen=off -background=white -foreground=black -store```
