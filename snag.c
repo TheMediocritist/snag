@@ -448,90 +448,61 @@ int main(int argc, char *argv[])
 									   line_len * 2);  // * 2 because source is 16 bit 
 		
 		// get the first 8 pixels of fb1 and the first pixel of new_data & old_data
-		uint8_t *fb1_pixels = fb1_data;
 		uint16_t *new_pixel = new_data;
 		uint16_t *old_pixel = old_data;
 
-		uint32_t pixel = 0;			// pixel counter (0 to 95,999)
-		uint16_t fb_chunk; 			// chunk counter (8 bits of fb1 per chunk)
-		uint8_t fb_chunk_bit;		// bit counter 
-		
-		char buffer_chunk[8];
+		char newbit;
+		char oldbit;
 		
 		// loop through pixels, compare new_pixel to old_pixel, update fb1_data if changed
-		for (fb_chunk = 0; fb_chunk < 12000; fb_chunk++)
+		for (pixel = 0; pixel < 96000; pixel++)
 		{
-			// copy data chunk _from_ framebuffer 
-			memcpy(buffer_chunk, fb1_data + (fb_chunk * 8), 8);
-			
-			for (fb_chunk_bit = 0; fb_chunk_bit < 8; fb_chunk_bit++)
+			if (*new_pixel != *old_pixel)
 			{	
-				if (*new_pixel != *old_pixel)
-				{	
-					// extract new rgb data for current pixel and convert to grayscale
-					uint16_t red, green, blue;
-					convertPixel(*new_pixel, &red, &green, &blue);
-					
-					//uint8_t red = ((*new_pixel >> 8) & 0xF8);
-					//uint8_t green = ((*new_pixel >> 3) & 0xFC);
-					//uint8_t blue = ((*new_pixel << 3) & 0xF8);					
-					uint16_t grayscale = (0.299 * red + 0.587 * green + 0.114 * blue);
-					//uint8_t grayscale = (int)((red + green + blue)/3);
-					
-					grayscale *= 1.5; // because there's a bug somewhere
-					
-					// Ensure grayscale value is within the range [0, 255]
-					grayscale = grayscale > 255 ? 255 : grayscale; 
-					
-					// DEBUG
-					if (pixel < 8)
-					{
-						DEBUG_INT(*new_pixel);
-						DEBUG_INT(red);
-						DEBUG_INT(green);
-						DEBUG_INT(blue);
-						DEBUG_INT(grayscale);
-					}
-					
-					
-					// bits to compare
-					uint8_t newbit = 1;
-					uint8_t oldbit = buffer_chunk[fb_chunk_bit];
-					
-					// pixel location
-					uint8_t col = pixel % 400;
-					uint8_t row = pixel / 400;
-					
-					if (strcmp(dithermethod, "2x2") == 0){
-						newbit = (grayscale < BAYER2X2[row % 2][col % 2] ? 0 : 1);
-					}
-					else if (strcmp(dithermethod, "3x3") == 0){
-						newbit = (grayscale < BAYER3X3[row % 3][col % 3] ? 0 : 1);
-					}
-					else if (strcmp(dithermethod, "4x4") == 0){
-						newbit = (grayscale < BAYER4X4[row % 4][col % 4] ? 0 : 1);
-					}
-					else if (strcmp(dithermethod, "8x8") == 0){
-						newbit = (grayscale < BAYER8X8[row % 8][col % 8] ? 0 : 1);
-					}
-					else if (strcmp(dithermethod, "16x16") == 0){
-						newbit = (grayscale < BAYER16X16[row % 16][col % 16] ? 0 : 1);
-					}
-					else{
-						newbit = (grayscale < 140 ? 0 : 1);
-					}
-					
-					if (newbit != oldbit){
-						memcpy(fb1_data + pixel, &newbit, 1);
-					}
+				// extract new rgb data for current pixel and convert to grayscale
+				uint16_t red, green, blue;
+				convertPixel(*new_pixel, &red, &green, &blue);
+								
+				uint16_t grayscale = (0.299 * red + 0.587 * green + 0.114 * blue);
+				
+				// Ensure grayscale value is within the range [0, 255]
+				grayscale = grayscale > 255 ? 255 : grayscale; 
+				
+				// pixel location
+				uint8_t col = pixel % 400;
+				uint8_t row = pixel / 400;
+
+				// fetch old data
+				oldbit = fb1_data[pixel];
+
+				if (strcmp(dithermethod, "2x2") == 0){
+					newbit = (grayscale < BAYER2X2[row % 2][col % 2] ? 0 : 1);
+				}
+				else if (strcmp(dithermethod, "3x3") == 0){
+					newbit = (grayscale < BAYER3X3[row % 3][col % 3] ? 0 : 1);
+				}
+				else if (strcmp(dithermethod, "4x4") == 0){
+					newbit = (grayscale < BAYER4X4[row % 4][col % 4] ? 0 : 1);
+				}
+				else if (strcmp(dithermethod, "8x8") == 0){
+					newbit = (grayscale < BAYER8X8[row % 8][col % 8] ? 0 : 1);
+				}
+				else if (strcmp(dithermethod, "16x16") == 0){
+					newbit = (grayscale < BAYER16X16[row % 16][col % 16] ? 0 : 1);
+				}
+				else{
+					newbit = (grayscale < 140 ? 0 : 1);
+				}
+
+				if (oldbit != newbit)
+				{
+					fb1_data[pixel] = newbit;
 				}
 				
-				++new_pixel;
-				++old_pixel;
-				++pixel;
 			}
-			
-			++fb1_pixels;
+				
+			++new_pixel;
+			++old_pixel;
 		}
 
 		uint16_t *tmp = old_data;
@@ -565,8 +536,8 @@ int main(int argc, char *argv[])
 
 	free(new_data);
 	free(old_data);
-	memset(fb1_data, 0, chunks);
-	munmap(fb1_data, chunks);
+	memset(fb1_data, 0, 96000);
+	munmap(fb1_data, 96000);
 	close(fb1);
 
 	//---------------------------------------------------------------------
