@@ -455,7 +455,7 @@ int main(int argc, char *argv[])
 		char oldbit;
 		
 		// loop through pixels, compare new_pixel to old_pixel, update fb1_data if changed
-		for (pixel = 0; pixel < 96000; pixel++)
+		for (uint32 pixel = 0; pixel < 96000; pixel++)
 		{
 			if (*new_pixel != *old_pixel)
 			{	
