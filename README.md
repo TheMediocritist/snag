@@ -5,6 +5,13 @@ Forked from https://github.com/AndrewFromMelbourne/raspi2fb with the following c
 * copies 16-bit HDMI buffer to 1-bit Sharp Memory Display buffer
 * converts coloured buffer to grayscale then 1-bit using Bayer dithering to maintain spatial integrity/accuracy of any black & white data
 
+## Some rather important notes
+1. snag _will not work_ on the Beepberry-recommended Raspberry Pi Lite image. This is a 'Bullseye' image, which dropped Dispmanx and the API we're using here. I'm making a new version (from scratch with little knowledge of C, so bear with me!), but in the meantime, the options are:
+   * Use a 'Legacy' version of Raspberry Pi OS. These are 'Buster' images, which include Dispmanx.
+   * Use a Retropie image, as these are also built on Buster.
+     
+I would recommend the second option, as it includes a pre-compiled and working SDL2.
+
 ## Dithering examples
 ![DitherPatterns](https://github.com/TheMediocritist/snag/assets/79881777/9cbcde9c-946f-45ee-acaa-2af6b710ca7c)
 
