@@ -2,15 +2,23 @@
 Copy primary display to a secondary framebuffer for display on a Sharp Memory LCD. Intended for use with [Beeperberry](https://beepberry.sqfmi.com) to enable fast copying of HDMI data to its display.
 
 Forked from https://github.com/AndrewFromMelbourne/raspi2fb with the following changes:
-* copies 16-bit HDMI buffer to 1-bit Sharp Memory Display buffer
+* copies 16-bit HDMI display to 1-bit Sharp Memory Display buffer
 * converts coloured buffer to grayscale then 1-bit using Bayer dithering to maintain spatial integrity/accuracy of any black & white data
 
 ## Some rather important notes
-1. snag _will not work_ on the Beepberry-recommended Raspberry Pi Lite image. This is a 'Bullseye' image, which dropped Dispmanx and the API we're using here. I'm making a new version (from scratch with little knowledge of C, so bear with me!), but in the meantime, the options are:
+1. ~~snag _will not work_ on the~~ Beepberry-recommended Raspberry Pi Lite image. This is a 'Bullseye' image, which dropped Dispmanx and the API we're using here. I'm making a new version (from scratch with little knowledge of C, so bear with me!), but in the meantime, the options are:
    * Use a 'Legacy' version of Raspberry Pi OS. These are 'Buster' images, which include Dispmanx.
    * Use a Retropie image, as these are also built on Buster.
      
 I would recommend the second option, as it includes a pre-compiled and working SDL2.
+
+**Edit 20230626:** After quite some pissing about with this and making slow but steady progress, I've discovered that although DispmanX is deprecated and has been dropped from Bullseye, the 'Fake KMS' driver uses it.
+
+You can reinstate it and enable snag to run by un-commenting this line in /boot/config.txt:
+
+```dtoverlay=vc4-fkms-v3d```
+
+However, many applications will not run, or will not run correctly with this enabled. So the journey continues...
 
 ## Dithering examples
 ![DitherPatterns](https://github.com/TheMediocritist/snag/assets/79881777/9cbcde9c-946f-45ee-acaa-2af6b710ca7c)
