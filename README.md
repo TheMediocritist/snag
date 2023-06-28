@@ -12,13 +12,15 @@ Forked from https://github.com/AndrewFromMelbourne/raspi2fb with the following c
      
 I would recommend the second option, as it includes a pre-compiled and working SDL2.
 
-**Edit 20230626:** After quite some pissing about with this and making slow but steady progress, I've discovered that although DispmanX is deprecated and has been dropped from Bullseye, the 'Fake KMS' driver uses it.
+**Edit 20230626:** After quite some pissing about with this and making slow but steady progress, I've discovered that although DispmanX is deprecated, the legacy and 'Fake KMS' drivers in Bullseye use it.
 
-You can reinstate it and enable snag to run by un-commenting this line in /boot/config.txt:
+You can fall back to the legacy driver by commenting out this line in /boot/config.txt:
+
+```#dtoverlay=vc4-kms-v3d```
+
+This will cause Raspberry Pi OS to use Dispmanx, and snag will run. Alternatively, you might try:
 
 ```dtoverlay=vc4-fkms-v3d```
-
-However, many applications will not run, or will not run correctly with this enabled. So the journey continues...
 
 ## Dithering examples
 ![DitherPatterns](https://github.com/TheMediocritist/snag/assets/79881777/9cbcde9c-946f-45ee-acaa-2af6b710ca7c)
